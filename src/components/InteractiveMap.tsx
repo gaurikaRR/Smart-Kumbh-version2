@@ -396,16 +396,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   };
 
   return (
-    <div className="relative w-full h-[480px] lg:h-[580px] rounded-3xl overflow-hidden border border-slate-800/80 bg-[#0F172A] shadow-card">
+    <div className="relative w-full h-[480px] lg:h-[580px] rounded-3xl overflow-hidden border border-olive-900/10 bg-olive-950 shadow-card">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
       {/* Floating Legend Pill (Top Left) */}
-      <div className="absolute top-4 left-4 z-10 bg-[#111827]/90 backdrop-blur-md border border-slate-700/60 rounded-2xl p-3 shadow-subtle max-w-xs text-xs font-sans">
-        <div className="font-semibold text-white tracking-tight mb-1.5 flex items-center justify-between">
+      <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur-md border border-stone-200/90 rounded-2xl p-3.5 shadow-md max-w-xs text-xs font-sans">
+        <div className="font-bold text-charcoal-900 tracking-tight mb-2 flex items-center justify-between">
           <span>Crowd Conditions</span>
           <span className="font-medium uppercase tracking-wider text-[11px] text-slate-400">Live</span>
         </div>
-        <div className="flex flex-col gap-1 text-[11px] text-slate-300">
+        <div className="flex flex-col gap-1 text-[11px] text-charcoal-700">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
             <span>Green: Low crowd (North Gate, Rest Area)</span>
@@ -429,7 +429,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       <div className="absolute bottom-4 right-4 z-10">
         <button
           onClick={handleLocateMe}
-          className="bg-[#111827] text-slate-200 hover:bg-slate-800 hover:text-white border border-slate-700/60 rounded-full px-4 py-2 text-xs font-medium shadow-subtle flex items-center gap-2 cursor-pointer transition-colors"
+          className="bg-white hover:bg-sand-100 text-charcoal-800 hover:text-olive-900 border border-stone-300 rounded-full px-4 py-2 text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all duration-200"
           title="Recenter to current location"
         >
           <svg className="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -442,7 +442,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       {/* Active Navigation Summary Bar (Bottom Left) */}
       {activeRoute && (
-        <div className="absolute bottom-4 left-4 z-10 bg-[#111827]/95 backdrop-blur-md border border-slate-700/60 rounded-2xl p-3 shadow-md max-w-sm font-sans">
+        <div className="absolute bottom-4 left-4 z-10 bg-white/95 backdrop-blur-md border border-stone-200 rounded-2xl p-3.5 shadow-lg max-w-sm font-sans">
           <div className="flex items-center justify-between gap-3 text-xs">
             <span className="font-semibold text-white tracking-tight">
               {activeRoute.isSafeBypass ? 'Safe Corridor Active' : 'Shortest Route'}
