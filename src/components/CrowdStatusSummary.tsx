@@ -11,69 +11,68 @@ export const CrowdStatusSummary: React.FC<CrowdStatusSummaryProps> = ({
   onSelectZone,
 }) => {
   return (
-    <section className="bg-white border border-olive-900/10 rounded-3xl p-6 sm:p-8 shadow-card flex flex-col gap-6 font-sans">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/80 pb-4">
+    <section className="bg-[#242D23] border border-[#2D382B] rounded-xl p-6 sm:p-7 shadow-card flex flex-col gap-5 font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2D382B] pb-4">
         <div>
-          <span className="font-semibold uppercase tracking-wider text-[11px] text-olive-700 block mb-1">
+          <span className="font-semibold uppercase tracking-wider text-[11px] text-[#D4A373] block mb-0.5">
             Sector Safety Advisory
           </span>
-          <h2 className="text-2xl font-bold text-charcoal-900 tracking-tight">
+          <h2 className="text-xl font-bold text-white tracking-tight font-heading">
             Current Ghat & Sector Crowd Levels
           </h2>
         </div>
-        <div className="flex items-center gap-2 text-charcoal-500 text-xs font-medium">
-          <span className="w-2 h-2 rounded-full bg-olive-600 animate-pulse"></span>
-          <span>Continuously refreshed via drone & field sensors</span>
+        <div className="flex items-center gap-2 text-[#9EABA0] text-xs font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#D4A373] animate-pulse"></span>
+          <span>Refreshed continuously via aerial and field telemetry</span>
         </div>
       </div>
 
-      {/* Grid of Sector Crowd Levels (Card-driven 4-col architecture) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Grid of Sector Crowd Levels */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {zones.map((zone) => {
-          let badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+          let badgeClass = 'bg-[#1C241B] text-emerald-400 border-emerald-500/30';
           let levelText = 'Normal Flow';
-          let borderAccent = 'border-stone-200/90 bg-white hover:border-olive-600/40';
+          let borderAccent = 'border-[#2D382B] bg-[#1C241B]';
 
           if (zone.status === 'amber') {
-            badgeClass = 'bg-gold-50 text-gold-800 border-gold-300';
+            badgeClass = 'bg-[#1C241B] text-[#D4A373] border-[#D4A373]/40';
             levelText = 'Moderate Crowd';
-            borderAccent = 'border-gold-300/80 bg-white hover:border-gold-500';
+            borderAccent = 'border-[#2D382B] bg-[#1C241B]';
           } else if (zone.status === 'red') {
-            badgeClass = 'bg-red-50 text-red-700 border-red-200';
+            badgeClass = 'bg-red-950/60 text-red-300 border-red-500/40';
             levelText = 'Severe Congestion';
-            borderAccent = 'border-red-300/80 bg-red-50/20 hover:border-red-500';
+            borderAccent = 'border-red-500/30 bg-[#1C241B]';
           }
 
           return (
             <div
               key={zone.id}
               onClick={() => onSelectZone(zone.id)}
-              className={`group p-5 rounded-2xl border ${borderAccent} shadow-sm hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between gap-4`}
+              className={`p-4 rounded-lg border ${borderAccent} shadow-sm card-interactive cursor-pointer flex flex-col justify-between gap-3.5`}
             >
               <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className={`px-2.5 py-0.5 rounded-full border font-semibold uppercase tracking-wider text-[11px] ${badgeClass}`}>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border ${badgeClass}`}>
                     {levelText}
                   </span>
-                  <span className="font-semibold text-charcoal-500 text-xs tabular-nums bg-sand-100 px-2 py-0.5 rounded-md">
+                  <span className="text-[#728570] text-[11px] tabular-nums font-mono">
                     {zone.lastUpdated}
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-charcoal-900 tracking-tight group-hover:text-olive-800 transition-colors">
+                <h3 className="text-base font-bold text-white tracking-tight font-heading">
                   {zone.name}
                 </h3>
-                <p className="font-medium text-charcoal-600 text-sm mt-1">
+                <p className="text-xs text-[#9EABA0] mt-1">
                   {zone.densityLabel}
                 </p>
               </div>
 
               <div>
-                <div className="font-normal text-charcoal-700 text-xs bg-sand-50 p-3 rounded-xl border border-stone-200 leading-relaxed">
+                <div className="text-[11px] text-[#E2E8F0] bg-[#242D23] p-2.5 rounded-md border border-[#2D382B] leading-relaxed">
                   {zone.advisory}
                 </div>
-                <div className="flex items-center justify-end text-[11px] font-bold text-olive-700 mt-2.5 opacity-0 group-hover:opacity-100 transition-opacity gap-1">
-                  <span>View on map</span>
-                  <span className="transition-transform group-hover:translate-x-1">→</span>
+                <div className="flex items-center justify-end text-[11px] font-semibold text-[#D4A373] mt-2">
+                  View Sector on Map
                 </div>
               </div>
             </div>
@@ -81,23 +80,23 @@ export const CrowdStatusSummary: React.FC<CrowdStatusSummaryProps> = ({
         })}
       </div>
 
-      {/* Route B Alert Callout with Olive & Amber framing */}
-      <div className="bg-sand-100/90 border border-gold-500/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-        <div className="flex items-start sm:items-center gap-3.5">
-          <div className="w-9 h-9 rounded-full bg-red-600 text-white font-bold flex items-center justify-center shrink-0 text-sm shadow-md">
+      {/* Route B Alert Callout */}
+      <div className="bg-[#1C241B] border border-red-500/40 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="w-7 h-7 rounded bg-[#FF4D4D] text-white font-bold flex items-center justify-center shrink-0 text-xs">
             !
           </div>
           <div>
-            <h4 className="font-bold text-xs uppercase tracking-wider text-red-700">
+            <h4 className="font-bold text-xs uppercase tracking-wider text-red-300">
               Travel Advisory: Route B (Pontoon Bridge 2) Closed
             </h4>
-            <p className="font-normal text-charcoal-700 text-sm leading-relaxed mt-0.5">
-              Pontoon Bridge is temporarily closed due to severe crowd volume. Pilgrims are advised to use East Safe Corridor (Route A) via East Steps.
+            <p className="text-[#E2E8F0] text-xs leading-relaxed mt-0.5">
+              Pontoon Bridge 2 is temporarily closed due to severe crowd volume. Pilgrims are safely routed through East Steps Safe Corridor (Route A).
             </p>
           </div>
         </div>
-        <span className="font-bold uppercase tracking-wider text-[11px] text-olive-900 bg-sand-200 px-3.5 py-1.5 rounded-full border border-stone-300 shrink-0 self-start sm:self-center shadow-sm">
-          Sector Police Notice
+        <span className="font-semibold uppercase tracking-wider text-[10px] text-red-300 bg-red-950/60 px-3 py-1 rounded border border-red-500/40 shrink-0 self-start sm:self-center">
+          Police Notice
         </span>
       </div>
     </section>

@@ -348,7 +348,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
               <span style="font-size: 12px; color: #94A3B8;">Distance: <strong style="color: #FFFFFF; font-variant-numeric: tabular-nums;">${facility.distanceMeters} m</strong></span>
               <button
                 id="btn-nav-${facility.id}"
-                style="background: #FFFFFF; color: #020617; font-size: 11px; font-weight: 600; border: 1px solid #CBD5E1; padding: 4px 12px; border-radius: 9999px; cursor: pointer;"
+                style="background: #242D23; color: #FFFFFF; font-size: 11px; font-weight: 600; border: 1px solid #2D382B; padding: 4px 12px; border-radius: 9999px; cursor: pointer;"
               >
                 Route on Map
               </button>
@@ -419,8 +419,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       className: 'dest-target-pin',
       html: `
         <div style="transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; font-family: 'Plus Jakarta Sans', system-ui, sans-serif;">
-          <div style="width: 18px; height: 18px; border-radius: 9999px; background: #FFFFFF; border: 3px solid #0F172A; box-shadow: 0 4px 10px rgba(0,0,0,0.5);"></div>
-          <div style="margin-top: 2px; background: #FFFFFF; color: #020617; font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 9999px; white-space: nowrap;">
+          <div style="width: 18px; height: 18px; border-radius: 9999px; background: #242D23; border: 3px solid #0F172A; box-shadow: 0 4px 10px rgba(0,0,0,0.5);"></div>
+          <div style="margin-top: 2px; background: #242D23; color: #FFFFFF; font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 9999px; white-space: nowrap;">
             Destination
           </div>
         </div>
@@ -444,19 +444,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   return (
     <div
-      className={`relative w-full h-[480px] lg:h-[580px] rounded-3xl overflow-hidden border border-olive-900/10 bg-olive-950 shadow-card ${
-        isDarkMapFilter ? 'dark-osm-tiles' : ''
-      }`}
+      className={`relative w-full h-[480px] lg:h-[580px] rounded-xl overflow-hidden border border-[#2D382B] bg-[#182017] shadow-card ${isDarkMapFilter ? "dark-osm-tiles" : ""}`}
     >
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
       {/* Floating Legend Pill (Top Left) */}
-      <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur-md border border-stone-200/90 rounded-2xl p-3.5 shadow-md max-w-xs text-xs font-sans">
-        <div className="font-bold text-charcoal-900 tracking-tight mb-2 flex items-center justify-between">
+      <div className="absolute top-4 left-4 z-10 bg-[#242D23]/95 backdrop-blur-md border border-[#2D382B] rounded-lg p-3 shadow-card max-w-xs text-xs font-sans">
+        <div className="font-bold text-white tracking-tight mb-2 flex items-center justify-between font-heading">
           <span>Crowd Conditions</span>
           <span className="font-medium uppercase tracking-wider text-[11px] text-slate-400">Live</span>
         </div>
-        <div className="flex flex-col gap-1 text-[11px] text-charcoal-700">
+        <div className="flex flex-col gap-1 text-[11px] text-[#9EABA0]">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
             <span>Green: Low crowd (North Gate, Rest Area)</span>
@@ -481,7 +479,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         {/* Toggle between High-Contrast Night Mode and Standard OSM tiles */}
         <button
           onClick={() => setIsDarkMapFilter(!isDarkMapFilter)}
-          className="bg-white hover:bg-sand-100 text-charcoal-800 hover:text-olive-900 border border-stone-300 rounded-full px-3.5 py-1.5 text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer transition-all duration-200"
+          className="bg-[#242D23] hover:bg-[#2D382B] text-[#E2E8F0] border border-[#2D382B] rounded-lg px-3 py-1.5 text-xs font-medium shadow-card flex items-center gap-1.5 cursor-pointer transition-colors"
           title="Toggle between dark mode filter and standard OpenStreetMap colors"
         >
           <span className="w-2 h-2 rounded-full bg-blue-400"></span>
@@ -491,7 +489,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         {/* Locate Me Action */}
         <button
           onClick={handleLocateMe}
-          className="bg-white hover:bg-sand-100 text-charcoal-800 hover:text-olive-900 border border-stone-300 rounded-full px-4 py-2 text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all duration-200"
+          className="bg-[#242D23] hover:bg-[#2D382B] text-[#D4A373] border border-[#2D382B] rounded-lg px-3.5 py-2 text-xs font-semibold shadow-card flex items-center gap-2 cursor-pointer transition-colors"
           title="Recenter to current location"
         >
           <svg className="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -504,7 +502,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       {/* Active Navigation Summary Bar (Bottom Left) */}
       {activeRoute && (
-        <div className="absolute bottom-4 left-4 z-10 bg-white/95 backdrop-blur-md border border-stone-200 rounded-2xl p-3.5 shadow-lg max-w-sm font-sans">
+        <div className="absolute bottom-4 left-4 z-10 bg-[#242D23]/95 backdrop-blur-md border border-[#2D382B] rounded-lg p-3.5 shadow-card max-w-sm font-sans">
           <div className="flex items-center justify-between gap-3 text-xs">
             <span className="font-bold text-charcoal-900 tracking-tight">
               {activeRoute.isSafeBypass ? 'Safe Corridor Active' : 'Shortest Route'}
