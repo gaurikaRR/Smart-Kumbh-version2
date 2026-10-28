@@ -5,6 +5,7 @@ interface HeaderUtilityBarProps {
   weather: WeatherAdvisory;
   freshnessTimestamp: string;
   isSimulatedLocation: boolean;
+  gpsAccuracy: number | null;
   onRefreshData: () => void;
   onToggleLocationMode: () => void;
   onRequestSos: () => void;
@@ -15,6 +16,7 @@ export const HeaderUtilityBar: React.FC<HeaderUtilityBarProps> = ({
   weather,
   freshnessTimestamp,
   isSimulatedLocation,
+  gpsAccuracy,
   onRefreshData,
   onToggleLocationMode,
   onRequestSos,
@@ -37,7 +39,6 @@ export const HeaderUtilityBar: React.FC<HeaderUtilityBarProps> = ({
                 {freshnessTimestamp}
               </strong>
             </span>
-            {/* Secondary Action Tier: Sync */}
             <button
               onClick={onRefreshData}
               className="bg-[#111827] text-slate-200 hover:bg-slate-800 hover:text-white border border-slate-700/60 px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors"
@@ -48,13 +49,22 @@ export const HeaderUtilityBar: React.FC<HeaderUtilityBarProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Secondary Action Tier: GPS Source Selector */}
+            {/* Real Hardware GPS vs Simulation Toggle with Live Accuracy */}
             <button
               onClick={onToggleLocationMode}
-              className="bg-[#111827] text-slate-200 hover:bg-slate-800 hover:text-white border border-slate-700/60 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-              title="Toggle GPS source"
+              className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors border flex items-center gap-1.5 ${
+                !isSimulatedLocation
+                  ? 'bg-blue-950/50 text-blue-300 border-blue-500/60'
+                  : 'bg-[#111827] text-slate-200 hover:bg-slate-800 hover:text-white border-slate-700/60'
+              }`}
+              title="Click to toggle between real hardware device GPS and Sangam Mela simulation"
             >
-              GPS: <span className="text-white">{isSimulatedLocation ? 'Sangam Axis (Mela Demo)' : 'Device Hardware'}</span>
+              <span className={`w-2 h-2 rounded-full ${!isSimulatedLocation ? 'bg-blue-400 animate-pulse' : 'bg-slate-400'}`}></span>
+              <span>
+                {!isSimulatedLocation
+                  ? `Live GPS Fix ${gpsAccuracy ? `(±${Math.round(gpsAccuracy)}m)` : ''}`
+                  : 'GPS: Sangam Axis (Demo)'}
+              </span>
             </button>
             <span className="text-slate-700">|</span>
             <div className="flex items-center gap-1.5 font-medium text-slate-400 text-xs">
@@ -91,7 +101,7 @@ export const HeaderUtilityBar: React.FC<HeaderUtilityBarProps> = ({
 
         {/* Right Action Controls */}
         <div className="flex items-center gap-3">
-          {/* Secondary Action Tier: Language Switcher Dock */}
+          {/* Language Switcher Dock */}
           <div className="hidden sm:flex items-center gap-1 bg-[#111827] p-1 rounded-full border border-slate-700/60 text-xs">
             <span className="px-3 py-1 rounded-full border-slate-400 bg-slate-800 text-white font-medium shadow-sm">
               English
@@ -101,7 +111,7 @@ export const HeaderUtilityBar: React.FC<HeaderUtilityBarProps> = ({
             </span>
           </div>
 
-          {/* Action Tier 1: Critical Danger / Emergency SOS Action */}
+          {/* Emergency SOS Trigger Button */}
           <button
             onClick={onRequestSos}
             className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold tracking-wide px-5 py-2.5 rounded-full text-xs uppercase border border-red-500/40 shadow-sm cursor-pointer transition-colors"

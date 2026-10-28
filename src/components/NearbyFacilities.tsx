@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import type { Facility } from '../types';
+import { getGoogleMapsNavigationUrl } from '../utils/googleMaps';
 
 interface NearbyFacilitiesProps {
   facilities: Facility[];
   selectedFacilityId: string | null;
+  userLocation: [number, number];
   onNavigateToFacility: (facilityId: string) => void;
 }
 
 export const NearbyFacilities: React.FC<NearbyFacilitiesProps> = ({
   facilities,
   selectedFacilityId,
+  userLocation,
   onNavigateToFacility,
 }) => {
   const [filterType, setFilterType] = useState<string>('all');
@@ -35,7 +38,7 @@ export const NearbyFacilities: React.FC<NearbyFacilitiesProps> = ({
           </h2>
         </div>
 
-        {/* Action Tier 3: Secondary / Floating HUD Dock Filter Toggles */}
+        {/* Filter Toggles */}
         <div className="flex flex-wrap items-center gap-2">
           {[
             { id: 'all', label: 'All Services' },
@@ -65,6 +68,7 @@ export const NearbyFacilities: React.FC<NearbyFacilitiesProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredFacilities.map((facility) => {
           const isSelected = facility.id === selectedFacilityId;
+          const googleMapsNav = getGoogleMapsNavigationUrl(userLocation, facility.coordinates, 'walking');
 
           let badgeColor = 'bg-blue-950/40 text-blue-300 border-blue-500/30';
           let tagText = 'Facility';
@@ -88,7 +92,7 @@ export const NearbyFacilities: React.FC<NearbyFacilitiesProps> = ({
               key={facility.id}
               className={`p-5 rounded-2xl border flex flex-col justify-between gap-4 transition-colors ${
                 isSelected
-                  ? 'border-blue-500/80 bg-slate-850 bg-[#162032] shadow-sm'
+                  ? 'border-blue-500/80 bg-[#162032] shadow-sm'
                   : 'border-slate-800/80 bg-[#111827] hover:border-slate-700'
               }`}
             >
@@ -113,22 +117,34 @@ export const NearbyFacilities: React.FC<NearbyFacilitiesProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center justify-between border-t border-slate-800/80 pt-3.5 mt-1">
-                <span className="font-medium text-slate-400 text-xs">
-                  Distance: <strong className="text-white font-semibold tabular-nums">{facility.distanceMeters} m</strong>
-                </span>
+              <div className="border-t border-slate-800/80 pt-3.5 mt-1 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-400 text-xs">
+                    Distance: <strong className="text-white font-semibold tabular-nums">{facility.distanceMeters} m</strong>
+                  </span>
 
-                {/* Action Tier 2: Primary Safe Navigation & Route Selection Action */}
-                <button
-                  onClick={() => onNavigateToFacility(facility.id)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors border ${
-                    isSelected
-                      ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white border-blue-400 shadow-sm'
-                      : 'bg-white text-slate-950 hover:bg-slate-100 active:bg-slate-200 border-slate-300'
-                  }`}
+                  {/* Route on Map Button */}
+                  <button
+                    onClick={() => onNavigateToFacility(facility.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors border ${
+                      isSelected
+                        ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white border-blue-400 shadow-sm'
+                        : 'bg-white text-slate-950 hover:bg-slate-100 active:bg-slate-200 border-slate-300'
+                    }`}
+                  >
+                    {isSelected ? 'Route Active' : 'Route on Map'}
+                  </button>
+                </div>
+
+                {/* Free Google Maps Direct Navigation Link */}
+                <a
+                  href={googleMapsNav}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 bg-[#0F172A] hover:bg-slate-800 text-blue-400 text-xs font-medium py-1.5 rounded-full border border-blue-500/30 hover:border-blue-400 transition-colors text-center"
                 >
-                  {isSelected ? 'Route Active' : 'Get Directions'}
-                </button>
+                  <span>Open in Google Maps Walking Nav ↗</span>
+                </a>
               </div>
             </div>
           );

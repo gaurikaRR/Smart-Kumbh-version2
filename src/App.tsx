@@ -24,6 +24,7 @@ import { calculateRoute, getDestinationNodeId, calculateHaversineDistance } from
 export const App: React.FC = () => {
   const [userLocation, setUserLocation] = useState<[number, number]>(DEFAULT_USER_LOCATION);
   const [isSimulatedLocation, setIsSimulatedLocation] = useState<boolean>(true);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [crowdZones, setCrowdZones] = useState<CrowdZone[]>(CROWD_ZONES);
   const [weather] = useState<WeatherAdvisory>(INITIAL_WEATHER);
   const [freshnessTimestamp, setFreshnessTimestamp] = useState<string>('15:52 IST');
@@ -33,7 +34,7 @@ export const App: React.FC = () => {
   const [avoidCongestion, setAvoidCongestion] = useState<boolean>(true);
   const [activeRoute, setActiveRoute] = useState<RouteCalculationResult | null>(null);
 
-  // Pilgrim's Individual Active SOS Request (Only their own, strictly decoupled from coordinator queue)
+  // Pilgrim's Individual Active SOS Request
   const [isSosModalOpen, setIsSosModalOpen] = useState<boolean>(false);
   const [mySosIncident, setMySosIncident] = useState<SosIncident | null>({
     id: 'SK-8841-MED',
@@ -48,7 +49,7 @@ export const App: React.FC = () => {
     responderDistanceMeters: 120,
   });
 
-  // Calculate facilities distance from pilgrim's location
+  // Calculate facilities distance from pilgrim's current location
   const facilities = useMemo(() => {
     return CRITICAL_FACILITIES.map((fac) => {
       const distance = calculateHaversineDistance(userLocation, fac.coordinates);
@@ -59,32 +60,36 @@ export const App: React.FC = () => {
     }).sort((a, b) => a.distanceMeters - b.distanceMeters);
   }, [userLocation]);
 
-  // Destination options for dropdown
+  // Destination options with coordinates
   const destinationOptions = useMemo(() => {
-    const list = [
+    const list: { id: string; label: string; category: string; distanceMeters: number; coordinates: [number, number] }[] = [
       ...facilities.map((f) => ({
         id: f.id,
         label: f.name,
         category: f.type,
         distanceMeters: f.distanceMeters,
+        coordinates: f.coordinates,
       })),
       {
         id: 'main-steps',
         label: 'Main Steps (Ghat Steps 4)',
         category: 'landmark',
         distanceMeters: calculateHaversineDistance(userLocation, [25.4288, 81.8835]),
+        coordinates: [25.4288, 81.8835],
       },
       {
         id: 'rest-area',
         label: 'Rest Area Sector 3',
         category: 'landmark',
         distanceMeters: calculateHaversineDistance(userLocation, [25.4255, 81.8805]),
+        coordinates: [25.4255, 81.8805],
       },
       {
         id: 'river-bridge',
         label: 'River Bridge (Pontoon 2 - Caution)',
         category: 'landmark',
         distanceMeters: calculateHaversineDistance(userLocation, [25.4262, 81.8872]),
+        coordinates: [25.4262, 81.8872],
       },
     ];
     return list;
@@ -102,6 +107,39 @@ export const App: React.FC = () => {
     setActiveRoute(calculated);
   }, [selectedDestinationId, avoidCongestion, userLocation]);
 
+  // Continuous Hardware GPS Tracking when Live Mode is active
+  useEffect(() => {
+    if (isSimulatedLocation) {
+      setGpsAccuracy(null);
+      return;
+    }
+
+    if (!('geolocation' in navigator)) {
+      alert('Geolocation is not supported by your browser.');
+      setIsSimulatedLocation(true);
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setUserLocation([pos.coords.latitude, pos.coords.longitude]);
+        setGpsAccuracy(pos.coords.accuracy);
+      },
+      (err) => {
+        console.warn('Live GPS watch error:', err.message);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 10000,
+      }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [isSimulatedLocation]);
+
   // GPS hardware detection toggle
   const handleToggleLocationMode = useCallback(() => {
     if (isSimulatedLocation) {
@@ -109,6 +147,7 @@ export const App: React.FC = () => {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             setUserLocation([pos.coords.latitude, pos.coords.longitude]);
+            setGpsAccuracy(pos.coords.accuracy);
             setIsSimulatedLocation(false);
           },
           () => {
@@ -121,6 +160,7 @@ export const App: React.FC = () => {
       }
     } else {
       setUserLocation(DEFAULT_USER_LOCATION);
+      setGpsAccuracy(null);
       setIsSimulatedLocation(true);
     }
   }, [isSimulatedLocation]);
@@ -204,11 +244,12 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-slate-200 flex flex-col font-sans">
-      {/* 1. Header & Utility Bar with Theme Toggle */}
+      {/* 1. Header & Utility Bar with Live GPS Telemetry */}
       <HeaderUtilityBar
         weather={weather}
         freshnessTimestamp={freshnessTimestamp}
         isSimulatedLocation={isSimulatedLocation}
+        gpsAccuracy={gpsAccuracy}
         onRefreshData={handleRefreshData}
         onToggleLocationMode={handleToggleLocationMode}
         onRequestSos={() => setIsSosModalOpen(true)}
@@ -217,7 +258,7 @@ export const App: React.FC = () => {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8">
-        {/* Pilgrim's Personal Active Request Tracker (Only shown if pilgrim has submitted an SOS) */}
+        {/* Pilgrim's Personal Active Request Tracker */}
         {mySosIncident && (
           <ActiveSosTracker
             incident={mySosIncident}
@@ -231,6 +272,8 @@ export const App: React.FC = () => {
           <div className="lg:col-span-7 flex flex-col gap-2">
             <InteractiveMap
               userLocation={userLocation}
+              gpsAccuracy={gpsAccuracy}
+              isSimulatedLocation={isSimulatedLocation}
               crowdZones={crowdZones}
               facilities={facilities}
               selectedFacilityId={selectedDestinationId}
@@ -248,6 +291,7 @@ export const App: React.FC = () => {
               selectedDestinationId={selectedDestinationId}
               activeRoute={activeRoute}
               avoidCongestion={avoidCongestion}
+              userLocation={userLocation}
               onSelectDestination={(id) => setSelectedDestinationId(id)}
               onToggleAvoidCongestion={() => setAvoidCongestion((prev) => !prev)}
               onClearRoute={() => setSelectedDestinationId('')}
@@ -267,7 +311,6 @@ export const App: React.FC = () => {
                 </p>
               </div>
 
-              {/* Action Tier 1: Critical Danger / Emergency SOS Action */}
               <button
                 onClick={() => setIsSosModalOpen(true)}
                 className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold tracking-wide px-5 py-2.5 rounded-full text-xs uppercase border border-red-500/40 shadow-sm transition-colors cursor-pointer shrink-0"
@@ -282,6 +325,7 @@ export const App: React.FC = () => {
         <NearbyFacilities
           facilities={facilities}
           selectedFacilityId={selectedDestinationId}
+          userLocation={userLocation}
           onNavigateToFacility={handleSelectFacility}
         />
 

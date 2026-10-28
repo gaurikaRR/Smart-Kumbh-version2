@@ -1,5 +1,6 @@
 import React from 'react';
 import type { SosIncident } from '../types';
+import { getGoogleMapsPinUrl, getWhatsAppShareLocationUrl } from '../utils/googleMaps';
 
 interface ActiveSosTrackerProps {
   incident: SosIncident;
@@ -33,6 +34,11 @@ export const ActiveSosTracker: React.FC<ActiveSosTrackerProps> = ({
   };
 
   const currentIndex = getStepIndex(incident.status);
+  const googleMapsUrl = getGoogleMapsPinUrl(incident.coordinates);
+  const whatsAppShareUrl = getWhatsAppShareLocationUrl(
+    incident.coordinates,
+    `KUMBH EMERGENCY SOS (ID: ${incident.id}) - Category: ${incident.category}. Nearest landmark: ${incident.landmark}. Location link:`
+  );
 
   return (
     <div className="bg-[#0F172A] border-2 border-red-500/80 rounded-3xl p-5 sm:p-6 shadow-card flex flex-col gap-5 font-sans">
@@ -58,7 +64,6 @@ export const ActiveSosTracker: React.FC<ActiveSosTrackerProps> = ({
           </div>
         </div>
 
-        {/* Action Tier 3: Secondary HUD Dock Action */}
         <button
           onClick={() => onCancelIncident(incident.id)}
           className="bg-[#111827] text-slate-200 hover:bg-slate-800 hover:text-white border border-slate-700/60 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer"
@@ -108,8 +113,8 @@ export const ActiveSosTracker: React.FC<ActiveSosTrackerProps> = ({
         </div>
       </div>
 
-      {/* Real-time Responder ETA & Instructions */}
-      <div className="bg-[#111827] rounded-2xl p-4 border border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+      {/* Real-time Responder ETA, Google Maps & WhatsApp Action Bar */}
+      <div className="bg-[#111827] rounded-2xl p-4 border border-slate-700/60 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
         <div>
           <span className="font-medium uppercase tracking-wider text-[11px] text-slate-400 block">
             Response Status
@@ -126,10 +131,29 @@ export const ActiveSosTracker: React.FC<ActiveSosTrackerProps> = ({
           )}
         </div>
 
-        <div className="shrink-0 flex items-center gap-3">
-          <div className="text-right">
-            <span className="font-medium text-slate-400 text-xs block">Control Room Line:</span>
-            <span className="font-semibold text-white text-xs tabular-nums">1920 (Free Call)</span>
+        {/* Free Deep-Link Integration Actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={googleMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-[#0F172A] hover:bg-slate-800 text-blue-300 hover:text-white border border-blue-500/40 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <span>Google Maps Pin ↗</span>
+          </a>
+
+          <a
+            href={whatsAppShareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <span>Share via WhatsApp ↗</span>
+          </a>
+
+          <div className="text-right border-l border-slate-700/60 pl-3">
+            <span className="font-medium text-slate-400 text-xs block">Helpline:</span>
+            <span className="font-semibold text-white text-xs tabular-nums">1920</span>
           </div>
         </div>
       </div>

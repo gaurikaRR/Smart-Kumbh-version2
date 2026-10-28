@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import type { CrowdZone, Facility, RouteCalculationResult } from '../types';
 import { NAVIGATION_NODES } from '../data/kumbhData';
+import { getGoogleMapsNavigationUrl, getGoogleMapsPinUrl } from '../utils/googleMaps';
 
 interface InteractiveMapProps {
   userLocation: [number, number];
+  gpsAccuracy: number | null;
+  isSimulatedLocation: boolean;
   crowdZones: CrowdZone[];
   facilities: Facility[];
   selectedFacilityId: string | null;
@@ -16,6 +19,8 @@ interface InteractiveMapProps {
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   userLocation,
+  gpsAccuracy,
+  isSimulatedLocation,
   crowdZones,
   facilities,
   selectedFacilityId,
@@ -33,7 +38,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const restrictedRouteLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
-  // Initialize Map with 100% Free OpenStreetMap Tiles (No API key required)
+  // Initialize Map with OpenStreetMap Tiles
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
@@ -74,11 +79,24 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     };
   }, []);
 
-  // Update User Marker
+  // Update User Marker & Real GPS Accuracy Circle
   useEffect(() => {
     if (!mapInstanceRef.current || !userMarkerGroupRef.current) return;
 
     userMarkerGroupRef.current.clearLayers();
+
+    // If real GPS is active with accuracy radius, draw the accuracy uncertainty circle
+    if (!isSimulatedLocation && gpsAccuracy) {
+      const accuracyCircle = L.circle(userLocation, {
+        radius: Math.max(10, gpsAccuracy),
+        color: '#38BDF8',
+        fillColor: '#38BDF8',
+        fillOpacity: 0.15,
+        weight: 1.5,
+        dashArray: '3, 4',
+      });
+      userMarkerGroupRef.current.addLayer(accuracyCircle);
+    }
 
     const userIcon = L.divIcon({
       className: 'smart-kumbh-user-icon',
@@ -89,7 +107,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             <span style="position: relative; display: block; width: 20px; height: 20px; border-radius: 9999px; background-color: #2563EB; border: 3px solid #FFFFFF; box-shadow: 0 4px 10px rgba(37,99,235,0.5);"></span>
           </div>
           <div style="margin-top: 4px; background: #0F172A; color: #FFFFFF; border: 1px solid #334155; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">
-            You are here
+            ${isSimulatedLocation ? 'Simulated Location' : 'You are here (Live GPS)'}
           </div>
         </div>
       `,
@@ -97,18 +115,36 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       iconAnchor: [40, 11],
     });
 
+    const googleMapsPin = getGoogleMapsPinUrl(userLocation);
+
     const marker = L.marker(userLocation, { icon: userIcon, zIndexOffset: 1000 });
     marker.bindPopup(`
       <div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; padding: 4px;">
-        <div style="font-size: 11px; font-weight: 500; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">Your Current Location</div>
-        <div style="font-size: 14px; font-weight: 600; color: #FFFFFF; letter-spacing: -0.02em; margin-top: 2px;">Main Steps West Corridor</div>
-        <div style="font-size: 11px; color: #38BDF8; font-variant-numeric: tabular-nums; margin-top: 4px;">${userLocation[0].toFixed(5)}° N, ${userLocation[1].toFixed(5)}° E</div>
-        <div style="font-size: 12px; color: #E2E8F0; margin-top: 4px;">Sector 4 • Sangam Mela Ground</div>
+        <div style="font-size: 11px; font-weight: 500; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">
+          ${isSimulatedLocation ? 'Demonstration Coordinate' : 'Live Hardware GPS Fix'}
+        </div>
+        <div style="font-size: 14px; font-weight: 600; color: #FFFFFF; letter-spacing: -0.02em; margin-top: 2px;">
+          ${isSimulatedLocation ? 'Main Steps West Corridor' : 'Current Device Position'}
+        </div>
+        <div style="font-size: 11px; color: #38BDF8; font-variant-numeric: tabular-nums; margin-top: 4px;">
+          ${userLocation[0].toFixed(5)}° N, ${userLocation[1].toFixed(5)}° E
+          ${gpsAccuracy ? ` (±${Math.round(gpsAccuracy)}m)` : ''}
+        </div>
+        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #334155;">
+          <a
+            href="${googleMapsPin}"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="display: inline-flex; align-items: center; gap: 4px; background: #111827; color: #38BDF8; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; text-decoration: none; border: 1px solid rgba(56, 189, 248, 0.4);"
+          >
+            <span>Open in Google Maps ↗</span>
+          </a>
+        </div>
       </div>
     `);
 
     userMarkerGroupRef.current.addLayer(marker);
-  }, [userLocation]);
+  }, [userLocation, isSimulatedLocation, gpsAccuracy]);
 
   // Update Crowd Zones
   useEffect(() => {
@@ -166,7 +202,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       zonesLayerGroupRef.current?.addLayer(polygon);
 
-      // Center pill label
       const labelIcon = L.divIcon({
         className: 'zone-center-pill',
         html: `
@@ -238,7 +273,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     restrictedRouteLayerGroupRef.current.addLayer(midMarker);
   }, []);
 
-  // Update Facility Markers
+  // Update Facility Markers with Google Maps Deep Links
   useEffect(() => {
     if (!mapInstanceRef.current || !facilitiesLayerGroupRef.current) return;
 
@@ -291,8 +326,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         onSelectFacility(facility.id);
       });
 
+      const googleMapsNav = getGoogleMapsNavigationUrl(userLocation, facility.coordinates, 'walking');
+
       marker.bindPopup(`
-        <div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; min-width: 210px; padding: 4px;">
+        <div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; min-width: 220px; padding: 4px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <span style="font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: ${tagText}; background: ${tagBg}; padding: 2px 8px; border-radius: 9999px;">
               ${typeLabel}
@@ -306,14 +343,24 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <div style="font-size: 12px; color: #E2E8F0; margin-top: 6px; padding: 6px 8px; background: #1E293B; border-radius: 8px;">
             ${facility.details}
           </div>
-          <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 12px; color: #94A3B8;">Distance: <strong style="color: #FFFFFF; font-variant-numeric: tabular-nums;">${facility.distanceMeters} m</strong></span>
-            <button
-              id="btn-nav-${facility.id}"
-              style="background: #FFFFFF; color: #020617; font-size: 11px; font-weight: 600; border: 1px solid #CBD5E1; padding: 4px 12px; border-radius: 9999px; cursor: pointer; transition: background 0.15s ease;"
+          <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #334155; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: #94A3B8;">Distance: <strong style="color: #FFFFFF; font-variant-numeric: tabular-nums;">${facility.distanceMeters} m</strong></span>
+              <button
+                id="btn-nav-${facility.id}"
+                style="background: #FFFFFF; color: #020617; font-size: 11px; font-weight: 600; border: 1px solid #CBD5E1; padding: 4px 12px; border-radius: 9999px; cursor: pointer;"
+              >
+                Route on Map
+              </button>
+            </div>
+            <a
+              href="${googleMapsNav}"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="text-align: center; background: #111827; color: #38BDF8; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; text-decoration: none; border: 1px solid rgba(56, 189, 248, 0.4);"
             >
-              Get Directions
-            </button>
+              Open in Google Maps Walking Nav ↗
+            </a>
           </div>
         </div>
       `);
@@ -330,7 +377,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       facilitiesLayerGroupRef.current?.addLayer(marker);
     });
-  }, [facilities, selectedFacilityId, onSelectFacility]);
+  }, [facilities, selectedFacilityId, onSelectFacility, userLocation]);
 
   // Update Navigation Route
   useEffect(() => {

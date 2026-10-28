@@ -1,11 +1,13 @@
 import React from 'react';
 import type { RouteCalculationResult } from '../types';
+import { getGoogleMapsNavigationUrl } from '../utils/googleMaps';
 
 interface NavigationPanelProps {
-  destinations: { id: string; label: string; category: string; distanceMeters: number }[];
+  destinations: { id: string; label: string; category: string; distanceMeters: number; coordinates?: [number, number] }[];
   selectedDestinationId: string;
   activeRoute: RouteCalculationResult | null;
   avoidCongestion: boolean;
+  userLocation: [number, number];
   onSelectDestination: (destId: string) => void;
   onToggleAvoidCongestion: () => void;
   onClearRoute: () => void;
@@ -16,10 +18,15 @@ export const NavigationPanel: React.FC<NavigationPanelProps> = ({
   selectedDestinationId,
   activeRoute,
   avoidCongestion,
+  userLocation,
   onSelectDestination,
   onToggleAvoidCongestion,
   onClearRoute,
 }) => {
+  const selectedDest = destinations.find((d) => d.id === selectedDestinationId);
+  const destCoords = activeRoute && activeRoute.path.length > 0 ? activeRoute.path[activeRoute.path.length - 1] : selectedDest?.coordinates;
+  const googleMapsUrl = destCoords ? getGoogleMapsNavigationUrl(userLocation, destCoords, 'walking') : null;
+
   return (
     <div className="bg-[#0F172A] border border-slate-800/80 rounded-3xl p-5 sm:p-6 shadow-card flex flex-col gap-4 font-sans">
       {/* Title & Clear Action */}
@@ -33,7 +40,6 @@ export const NavigationPanel: React.FC<NavigationPanelProps> = ({
           </h2>
         </div>
         {activeRoute && (
-          /* Action Tier 3: Secondary HUD Dock Action */
           <button
             onClick={onClearRoute}
             className="bg-[#111827] text-slate-200 hover:bg-slate-800 hover:text-white border border-slate-700/60 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
@@ -43,7 +49,7 @@ export const NavigationPanel: React.FC<NavigationPanelProps> = ({
         )}
       </div>
 
-      {/* Destination Selector: Action Tier 3 Container */}
+      {/* Destination Selector */}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="destination-select" className="font-medium text-slate-400 text-xs">
           Where do you want to go?
@@ -70,7 +76,7 @@ export const NavigationPanel: React.FC<NavigationPanelProps> = ({
         </div>
       </div>
 
-      {/* Congestion Avoidance Toggle: Secondary HUD Dock Action */}
+      {/* Congestion Avoidance Toggle */}
       <div className="bg-[#111827] border border-slate-700/60 rounded-2xl p-3.5 flex items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold text-white">
@@ -128,6 +134,21 @@ export const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 Direct Pontoon Bridge path is closed. You are safely routed through East Steps (Route A).
               </span>
             </div>
+          )}
+
+          {/* Direct Google Maps Voice Walking Navigation Integration */}
+          {googleMapsUrl && (
+            <a
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-[#111827] hover:bg-slate-800 text-blue-400 hover:text-white border border-blue-500/40 hover:border-blue-400 p-2.5 rounded-2xl text-xs font-semibold tracking-wide transition-colors"
+            >
+              <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              <span>Open in Google Maps (Live Voice Walking Navigation) ↗</span>
+            </a>
           )}
 
           {/* Turn-by-turn guidance */}
