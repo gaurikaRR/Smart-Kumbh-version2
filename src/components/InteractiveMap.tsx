@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import type { CrowdZone, Facility, RouteCalculationResult } from '../types';
 import { NAVIGATION_NODES } from '../data/kumbhData';
@@ -25,6 +25,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const [isDarkMapFilter, setIsDarkMapFilter] = useState<boolean>(true);
 
   const userMarkerGroupRef = useRef<L.LayerGroup | null>(null);
   const zonesLayerGroupRef = useRef<L.LayerGroup | null>(null);
@@ -32,7 +33,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const restrictedRouteLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
-  // Initialize Map
+  // Initialize Map with 100% Free OpenStreetMap Tiles (No API key required)
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
@@ -45,12 +46,12 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       minZoom: 14,
     });
 
-    // High contrast dark basemap
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
+    // Official OpenStreetMap tile server
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20,
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+      subdomains: ['a', 'b', 'c'],
     }).addTo(map);
 
     L.control
@@ -141,7 +142,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         weight: 2,
         opacity: 0.85,
         fillColor: fillColor,
-        fillOpacity: 0.22,
+        fillOpacity: 0.25,
       });
 
       polygon.bindPopup(`
@@ -307,7 +308,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           </div>
           <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 12px; color: #94A3B8;">Distance: <strong style="color: #FFFFFF; font-variant-numeric: tabular-nums;">${facility.distanceMeters} m</strong></span>
-            <!-- Action Tier 2: Primary Safe Navigation Action -->
             <button
               id="btn-nav-${facility.id}"
               style="background: #FFFFFF; color: #020617; font-size: 11px; font-weight: 600; border: 1px solid #CBD5E1; padding: 4px 12px; border-radius: 9999px; cursor: pointer; transition: background 0.15s ease;"
@@ -396,7 +396,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   };
 
   return (
-    <div className="relative w-full h-[480px] lg:h-[580px] rounded-3xl overflow-hidden border border-slate-800/80 bg-[#0F172A] shadow-card">
+    <div
+      className={`relative w-full h-[480px] lg:h-[580px] rounded-3xl overflow-hidden border border-slate-800/80 bg-[#0F172A] shadow-card ${
+        isDarkMapFilter ? 'dark-osm-tiles' : ''
+      }`}
+    >
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
       {/* Floating Legend Pill (Top Left) */}
@@ -425,8 +429,19 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         </div>
       </div>
 
-      {/* Secondary Action Tier: Floating HUD Dock Recenter Action */}
-      <div className="absolute bottom-4 right-4 z-10">
+      {/* Map Control Docks (Bottom Right) */}
+      <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2 items-end">
+        {/* Toggle between High-Contrast Night Mode and Standard OSM tiles */}
+        <button
+          onClick={() => setIsDarkMapFilter(!isDarkMapFilter)}
+          className="bg-[#111827] text-slate-200 hover:bg-slate-800 hover:text-white border border-slate-700/60 rounded-full px-3.5 py-1.5 text-xs font-medium shadow-subtle flex items-center gap-1.5 cursor-pointer transition-colors"
+          title="Toggle between dark mode filter and standard OpenStreetMap colors"
+        >
+          <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+          <span>{isDarkMapFilter ? 'Night Map' : 'Standard OSM'}</span>
+        </button>
+
+        {/* Locate Me Action */}
         <button
           onClick={handleLocateMe}
           className="bg-[#111827] text-slate-200 hover:bg-slate-800 hover:text-white border border-slate-700/60 rounded-full px-4 py-2 text-xs font-medium shadow-subtle flex items-center gap-2 cursor-pointer transition-colors"
