@@ -8,6 +8,7 @@ import { NearbyFacilities } from './components/NearbyFacilities';
 import { CrowdStatusSummary } from './components/CrowdStatusSummary';
 import { WeatherModal } from './components/WeatherModal';
 import { PilgrimAuthModal } from './components/PilgrimAuthModal';
+import { PilgrimEntryGate } from './components/PilgrimEntryGate';
 import {
   CROWD_ZONES,
   CRITICAL_FACILITIES,
@@ -27,7 +28,6 @@ import {
   getTranslation,
 } from './utils/bhashini';
 import {
-  getStoredPilgrimProfile,
   setStoredPilgrimProfile,
   type PilgrimProfile,
 } from './utils/supabase';
@@ -43,7 +43,9 @@ export const App: React.FC = () => {
   // Modals & Authentication State
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [pilgrimProfile, setPilgrimProfile] = useState<PilgrimProfile | null>(() => getStoredPilgrimProfile());
+  
+  // 🚨 ARCHITECTURAL FLOW: Initial load starts at null so the Entry Gate is always presented first
+  const [pilgrimProfile, setPilgrimProfile] = useState<PilgrimProfile | null>(null);
 
   // Language State (Bhashini Pipeline)
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
@@ -90,32 +92,18 @@ export const App: React.FC = () => {
         distanceMeters: f.distanceMeters,
         coordinates: f.coordinates,
       })),
-      {
-        id: 'main-steps',
-        label: 'Main Steps (Ghat Steps 4)',
-        category: 'landmark',
-        distanceMeters: calculateHaversineDistance(userLocation, [25.4288, 81.8835]),
-        coordinates: [25.4288, 81.8835],
-      },
-      {
-        id: 'rest-area',
-        label: 'Rest Area Sector 3',
-        category: 'landmark',
-        distanceMeters: calculateHaversineDistance(userLocation, [25.4255, 81.8805]),
-        coordinates: [25.4255, 81.8805],
-      },
-      {
-        id: 'river-bridge',
-        label: 'River Bridge (Pontoon 2 - Caution)',
-        category: 'landmark',
-        distanceMeters: calculateHaversineDistance(userLocation, [25.4262, 81.8872]),
-        coordinates: [25.4262, 81.8872],
-      },
+      ...crowdZones.map((z) => ({
+        id: z.id,
+        label: `${z.name} (${z.densityLabel})`,
+        category: 'Sector Zone',
+        distanceMeters: calculateHaversineDistance(userLocation, z.center),
+        coordinates: z.center,
+      })),
     ];
     return list;
-  }, [facilities, userLocation]);
+  }, [facilities, crowdZones, userLocation]);
 
-  // Compute Shortest Safe Route
+  // Recalculate route whenever destination or user location changes
   useEffect(() => {
     if (!selectedDestinationId) {
       setActiveRoute(null);
@@ -185,7 +173,7 @@ export const App: React.FC = () => {
     }
   }, [isSimulatedLocation]);
 
-  // Telemetry sync
+  // Refresh telemetry simulated sync
   const handleRefreshData = useCallback(() => {
     const now = new Date();
     const formatted = `${now.getHours().toString().padStart(2, '0')}:${now
@@ -195,8 +183,12 @@ export const App: React.FC = () => {
     setFreshnessTimestamp(formatted);
 
     setCrowdZones((prev) =>
-      prev.map((z) => ({
-        ...z,
+      prev.map((zone) => ({
+        ...zone,
+        estimatedPeople: Math.max(
+          1000,
+          Math.floor(zone.estimatedPeople + (Math.random() * 200 - 100))
+        ),
         lastUpdated: formatted,
       }))
     );
@@ -217,13 +209,16 @@ export const App: React.FC = () => {
       timestamp: timeStr,
       coordinates: userLocation,
       landmark: 'Main Steps Sector Axis 4',
-      notes,
+      notes: pilgrimProfile
+        ? `${notes ? `${notes} · ` : ''}Pilgrim: ${pilgrimProfile.full_name} (${pilgrimProfile.age}y, ${pilgrimProfile.gender}) | Special Needs: ${pilgrimProfile.health_conditions.join(', ')}`
+        : notes,
       status: 'Reported',
     };
 
     setMySosIncident(newIncident);
     setIsSosModalOpen(false);
 
+    // Realistic auto-progression simulation from the control room
     setTimeout(() => {
       setMySosIncident((curr) =>
         curr && curr.id === randomId
@@ -270,6 +265,20 @@ export const App: React.FC = () => {
     setPilgrimProfile(null);
   };
 
+  // 🚨 ARCHITECTURAL FLOW REQUIREMENT:
+  // When the application loads, do NOT directly display the main dashboard/home page.
+  // Show the Pilgrim Registration & Login Screen first as an entry gate.
+  // Once the user completes registration details and passes verification, transition them seamlessly into the main page.
+  if (!pilgrimProfile) {
+    return (
+      <PilgrimEntryGate
+        onAuthenticated={(profile) => {
+          setPilgrimProfile(profile);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#1C241B] text-[#E2E8F0] flex flex-col font-sans selection:bg-[#D4A373]/20 selection:text-[#D4A373]">
       {/* 1. Top Header & Utility Navigation */}
@@ -308,184 +317,124 @@ export const App: React.FC = () => {
             </div>
 
             {/* Quick CTAs */}
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <a
-                href="#navigation-section"
-                className="bg-[#D4A373] hover:bg-[#E5B842] text-[#0F130E] font-bold px-5 py-2.5 rounded-lg text-xs uppercase tracking-wider transition-colors shadow-md"
-              >
-                {t('nav_safe_pathway')}
-              </a>
-              <a
-                href="#crowd-summary"
-                className="bg-[#242D23] hover:bg-[#2D382B] text-[#E2E8F0] border border-[#2D382B] font-medium px-4 py-2.5 rounded-lg text-xs uppercase tracking-wider transition-colors"
-              >
-                {t('sector_conditions')}
-              </a>
+            <div className="flex flex-wrap items-center gap-3">
               <button
-                onClick={() => setIsSosModalOpen(true)}
-                className="bg-[#FF4D4D] hover:bg-[#E63939] text-white font-bold px-4 py-2.5 rounded-lg text-xs uppercase tracking-wider transition-colors shadow-md"
+                onClick={() => {
+                  const navElem = document.getElementById('navigation-section');
+                  if (navElem) navElem.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="bg-[#D4A373] hover:bg-[#E5B842] active:bg-[#C28E58] text-[#182017] font-bold px-5 py-2.5 rounded-lg text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-sm"
               >
-                {t('emergency_sos')}
+                {t('safe_route')}
+              </button>
+              <button
+                onClick={() => {
+                  const el = document.getElementById('crowd-summary');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="bg-[#242D23] hover:bg-[#2D382B] text-white font-medium px-5 py-2.5 rounded-lg text-xs tracking-wider uppercase border border-[#2D382B] hover:border-[#D4A373]/50 transition-colors cursor-pointer"
+              >
+                {t('sector_status')}
               </button>
             </div>
           </div>
-
-          {/* Enterprise Stats Bar (4 Structured Cards with 8px-12px inner corners) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 pt-2">
-            <div className="bg-[#242D23] border border-[#2D382B] rounded-lg p-4 shadow-card hover:border-[#D4A373]/40 card-interactive">
-              <span className="font-semibold uppercase tracking-wider text-[10px] text-[#D4A373] block mb-1">
-                Monitored Sectors
-              </span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight tabular-nums font-heading">
-                4 Zones
-              </div>
-              <span className="text-[#9EABA0] text-[11px] mt-1 block">
-                Live sensor & aerial coverage
-              </span>
-            </div>
-
-            <div className="bg-[#242D23] border border-[#2D382B] rounded-lg p-4 shadow-card hover:border-[#D4A373]/40 card-interactive">
-              <span className="font-semibold uppercase tracking-wider text-[10px] text-[#D4A373] block mb-1">
-                Corridor Routing
-              </span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight tabular-nums font-heading">
-                Route A Safe
-              </div>
-              <span className="text-[#9EABA0] text-[11px] mt-1 block">
-                Automatic Pontoon 2 bypass
-              </span>
-            </div>
-
-            <div className="bg-[#242D23] border border-[#2D382B] rounded-lg p-4 shadow-card hover:border-[#D4A373]/40 card-interactive">
-              <span className="font-semibold uppercase tracking-wider text-[10px] text-[#D4A373] block mb-1">
-                Support Stations
-              </span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight tabular-nums font-heading">
-                100% Active
-              </div>
-              <span className="text-[#9EABA0] text-[11px] mt-1 block">
-                Medical, lost-person & ORS
-              </span>
-            </div>
-
-            <div className="bg-[#242D23] border border-[#2D382B] rounded-lg p-4 shadow-card hover:border-[#D4A373]/40 card-interactive">
-              <span className="font-semibold uppercase tracking-wider text-[10px] text-[#D4A373] block mb-1">
-                Field Triage ETA
-              </span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-[#D4A373] tracking-tight tabular-nums font-heading">
-                &lt; 3 mins
-              </div>
-              <span className="text-[#9EABA0] text-[11px] mt-1 block">
-                Assigned on-duty responder
-              </span>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* 3. Core Feature Overview (3-Column Interactive Grid Cards) */}
-      <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-8 pb-2">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-[#242D23] border border-[#2D382B] rounded-lg p-5 shadow-card hover:border-[#D4A373]/40 card-interactive">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#D4A373] block mb-1">
-              Path Routing
-            </span>
-            <h3 className="text-base font-bold text-white tracking-tight font-heading">
-              Dynamic Safe-Path Calculation
-            </h3>
-            <p className="text-[#9EABA0] text-xs leading-relaxed mt-1.5">
-              Graph-based calculation routes pilgrims away from bottlenecked pontoon bridges directly to their holy destination.
-            </p>
+      {/* Main Interactive Pilgrim Workplace Canvas */}
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 w-full space-y-8 flex-1">
+        {/* Navigation & Live Obstacle-Avoidance Map Grid */}
+        <div id="navigation-section" className="scroll-mt-24 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[#2D382B] pb-3">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-heading">
+                {t('corridor_navigation')}
+              </h2>
+              <p className="text-xs text-[#9EABA0] mt-0.5">
+                {t('corridor_desc')}
+              </p>
+            </div>
           </div>
 
-          <div className="bg-[#242D23] border border-[#2D382B] rounded-lg p-5 shadow-card hover:border-[#D4A373]/40 card-interactive">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#D4A373] block mb-1">
-              Facility Locator
-            </span>
-            <h3 className="text-base font-bold text-white tracking-tight font-heading">
-              Verified Essential Services
-            </h3>
-            <p className="text-[#9EABA0] text-xs leading-relaxed mt-1.5">
-              Locate medical camps, help desks, water distribution, and evacuation exit corridors with walking distance telemetry.
-            </p>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left 4 Cols: Destination Selection & Turn-by-Turn Waypoints */}
+            <div className="lg:col-span-4 order-2 lg:order-1">
+              <NavigationPanel
+                destinations={destinationOptions}
+                selectedDestinationId={selectedDestinationId}
+                avoidCongestion={avoidCongestion}
+                activeRoute={activeRoute}
+                userLocation={userLocation}
+                onSelectDestination={setSelectedDestinationId}
+                onToggleAvoidCongestion={() => setAvoidCongestion((prev) => !prev)}
+                onClearRoute={() => {
+                  setSelectedDestinationId('');
+                  setActiveRoute(null);
+                }}
+              />
+            </div>
 
-          <div className="bg-[#242D23] border border-[#2D382B] rounded-lg p-5 shadow-card hover:border-[#D4A373]/40 card-interactive">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#D4A373] block mb-1">
-              Rapid Response
-            </span>
-            <h3 className="text-base font-bold text-white tracking-tight font-heading">
-              Direct Emergency Dispatch
-            </h3>
-            <p className="text-[#9EABA0] text-xs leading-relaxed mt-1.5">
-              One-touch SOS transmits exact GPS telemetry and landmark coordinates to the sector control room for immediate triage dispatch.
-            </p>
+            {/* Right 8 Cols: Interactive Spatial Geo-Map */}
+            <div className="lg:col-span-8 order-1 lg:order-2">
+              <InteractiveMap
+                crowdZones={crowdZones}
+                facilities={facilities}
+                userLocation={userLocation}
+                isSimulatedLocation={isSimulatedLocation}
+                gpsAccuracy={gpsAccuracy}
+                activeRoute={activeRoute}
+                selectedFacilityId={selectedDestinationId}
+                showCongestedRouteComparison={avoidCongestion}
+                onSelectFacility={handleSelectFacility}
+                onRecenter={() => {
+                  setUserLocation(DEFAULT_USER_LOCATION);
+                }}
+              />
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* 4. Main Interactive Sections Container */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 flex flex-col gap-7">
-        {/* Pilgrim's Personal Active Request Tracker */}
+        {/* 3. Personal SOS Active Progress Tracker */}
         {mySosIncident && (
-          <ActiveSosTracker
-            incident={mySosIncident}
-            onCancelIncident={handleCancelSos}
-          />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase font-bold tracking-wider text-[#FF4D4D] flex items-center gap-1.5 font-heading">
+                <span className="w-2 h-2 rounded-full bg-[#FF4D4D] animate-ping" />
+                {t('emergency_sos')}
+              </span>
+              <span className="text-xs text-[#9EABA0]">
+                {t('ref_number')}: <strong className="font-mono text-white">{mySosIncident.id}</strong>
+              </span>
+            </div>
+
+            <ActiveSosTracker
+              incident={mySosIncident}
+              onCancelIncident={handleCancelSos}
+            />
+          </div>
         )}
 
-        {/* Interactive Map & Safe-Path Navigation Section */}
-        <div id="navigation-section" className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start scroll-mt-20">
-          {/* Map (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col gap-2">
-            <InteractiveMap
-              userLocation={userLocation}
-              gpsAccuracy={gpsAccuracy}
-              isSimulatedLocation={isSimulatedLocation}
-              crowdZones={crowdZones}
-              facilities={facilities}
-              selectedFacilityId={selectedDestinationId}
-              activeRoute={activeRoute}
-              showCongestedRouteComparison={!avoidCongestion}
-              onSelectFacility={handleSelectFacility}
-              onRecenter={() => {}}
-            />
-          </div>
-
-          {/* Navigation Controls (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col gap-5">
-            <NavigationPanel
-              destinations={destinationOptions}
-              selectedDestinationId={selectedDestinationId}
-              activeRoute={activeRoute}
-              avoidCongestion={avoidCongestion}
-              userLocation={userLocation}
-              onSelectDestination={(id) => setSelectedDestinationId(id)}
-              onToggleAvoidCongestion={() => setAvoidCongestion((prev) => !prev)}
-              onClearRoute={() => setSelectedDestinationId('')}
-            />
-
-            {/* Quick Emergency Assistance Card */}
-            <div className="bg-[#242D23] border border-red-500/40 rounded-xl p-5 shadow-card flex items-center justify-between gap-4">
-              <div>
-                <span className="font-bold uppercase tracking-wider text-[10px] text-red-400 block mb-0.5">
-                  {t('need_help')}
-                </span>
-                <h3 className="text-base font-bold text-white tracking-tight font-heading">
-                  {t('instant_emergency_sos')}
-                </h3>
-                <p className="font-normal text-[#9EABA0] text-xs leading-relaxed mt-0.5">
-                  {t('sos_desc')}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setIsSosModalOpen(true)}
-                className="bg-[#FF4D4D] hover:bg-[#E63939] text-white font-bold tracking-wider px-4 py-2 rounded-lg text-xs uppercase border border-red-400 shadow-md transition-colors cursor-pointer shrink-0"
-              >
-                Send SOS
-              </button>
+        {/* Emergency SOS Banner Action */}
+        <div className="p-5 sm:p-6 bg-[#242D23] border border-[#2D382B] rounded-card shadow-card">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF4D4D] block mb-1">
+                {t('emergency_sos')}
+              </span>
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight font-heading">
+                {t('sos_alert_title')}
+              </h3>
+              <p className="font-normal text-[#9EABA0] text-xs leading-relaxed mt-0.5 max-w-xl">
+                {t('sos_alert_desc')}
+              </p>
             </div>
+
+            <button
+              onClick={() => setIsSosModalOpen(true)}
+              className="bg-[#FF4D4D] hover:bg-[#E63939] active:bg-[#CC2929] text-white font-bold tracking-wider px-6 py-3 rounded-lg text-xs uppercase border border-red-400 shadow-md transition-all duration-150 cursor-pointer shrink-0 text-center"
+            >
+              {t('emergency_sos')}
+            </button>
           </div>
         </div>
 
@@ -498,7 +447,7 @@ export const App: React.FC = () => {
         />
 
         {/* Sector Crowd Conditions Summary */}
-        <div id="crowd-summary" className="scroll-mt-20">
+        <div id="crowd-summary" className="scroll-mt-24">
           <CrowdStatusSummary
             zones={crowdZones}
             onSelectZone={(zoneId) => setSelectedDestinationId(zoneId)}
@@ -506,60 +455,62 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-      {/* 5. Clean Enterprise Footer with Sharp Outer Edges */}
-      <footer className="border-t border-[#2D382B] bg-[#141B13] py-7 px-4 sm:px-6 mt-12 text-xs text-[#9EABA0] font-sans rounded-none">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-5">
+      {/* Modern Footer in Deep Olive Green */}
+      <footer className="border-t border-[#2D382B] bg-[#121711] py-8 px-4 sm:px-6 mt-16 text-xs text-[#9EABA0] font-sans">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded bg-[#242D23] text-[#D4A373] font-bold flex items-center justify-center text-xs border border-[#2D382B] font-heading">
+              <span className="w-6 h-6 rounded-md bg-[#242D23] text-[#D4A373] font-bold flex items-center justify-center text-xs border border-[#2D382B]">
                 SK
               </span>
-              <strong className="text-white font-bold text-sm tracking-wider font-heading uppercase">SMARTKUMBH</strong>
+              <strong className="text-white font-bold text-sm tracking-wider font-heading uppercase">
+                SMARTKUMBH
+              </strong>
             </div>
             <span className="text-[#2D382B] hidden sm:inline">•</span>
-            <span className="text-[#9EABA0]">MahaKumbh Pilgrim Safety & Safe-Corridor Network</span>
+            <span className="text-[#9EABA0]">MahaKumbh Crowd Safety & Navigation Network</span>
             <span className="text-[#2D382B] hidden sm:inline">•</span>
-            <span className="text-[#D4A373] font-semibold">VNIT INNOV8</span>
+            <span className="text-[#D4A373] font-semibold">Prayagraj Mela Authority</span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-[#E2E8F0]">
-            <span className="bg-[#1C241B] px-3 py-1 rounded-md border border-[#2D382B]">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-[#E2E8F0]">
+            <span className="bg-[#182017] px-3 py-1.5 rounded-md border border-[#2D382B]">
               Toll-Free Helpline: <span className="tabular-nums text-[#D4A373] ml-1 font-bold">1920</span>
             </span>
-            <span className="bg-[#1C241B] px-3 py-1 rounded-md border border-[#2D382B]">
-              Police Emergency: <span className="tabular-nums text-white ml-1 font-bold">112</span>
+            <span className="bg-[#182017] px-3 py-1.5 rounded-md border border-[#2D382B]">
+              Police: <span className="tabular-nums text-white ml-1 font-bold">112</span>
             </span>
-            <span className="bg-[#1C241B] px-3 py-1 rounded-md border border-[#2D382B]">
-              Medical Triage: <span className="tabular-nums text-white ml-1 font-bold">108</span>
+            <span className="bg-[#182017] px-3 py-1.5 rounded-md border border-[#2D382B]">
+              Medical: <span className="tabular-nums text-white ml-1 font-bold">108</span>
             </span>
           </div>
         </div>
       </footer>
 
-      {/* Weather Forecast Popup Modal */}
-      <WeatherModal
-        isOpen={isWeatherModalOpen}
-        weather={weather}
-        onClose={() => setIsWeatherModalOpen(false)}
-      />
-
-      {/* Supabase Pilgrim Login & Registration Modal */}
-      <PilgrimAuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onAuthenticated={(profile) => {
-          setPilgrimProfile(profile);
-          alert(`Welcome, ${profile.full_name}! Your health profile has been registered for emergency priority routing.`);
-        }}
-      />
-
-      {/* Pilgrim Emergency SOS Submission Modal */}
+      {/* Emergency SOS Modal */}
       <SosModal
         isOpen={isSosModalOpen}
         userLocation={userLocation}
         nearestLandmark="Main Steps West Corridor (Sector 4 Axis)"
         onClose={() => setIsSosModalOpen(false)}
         onSubmitIncident={handleCreateSosIncident}
+      />
+
+      {/* Comprehensive Weather Telemetry Modal */}
+      <WeatherModal
+        isOpen={isWeatherModalOpen}
+        weather={weather}
+        onClose={() => setIsWeatherModalOpen(false)}
+      />
+
+      {/* Secondary Pilgrim Auth Modal (can be triggered from header navbar) */}
+      <PilgrimAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthenticated={(profile) => {
+          setPilgrimProfile(profile);
+          setIsAuthModalOpen(false);
+        }}
       />
     </div>
   );
